@@ -1,12 +1,16 @@
+import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   index,
-  pgTable,
+  pgTableCreator,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+const pgTable = pgTableCreator((name) => `nie_${name}`);
+
+export type User = InferSelectModel<typeof users>;
 export const users = pgTable(
   "user",
   {
@@ -25,6 +29,7 @@ export const users = pgTable(
   (table) => [uniqueIndex("user_email_unique").on(table.email)],
 );
 
+export type Session = InferSelectModel<typeof sessions>;
 export const sessions = pgTable(
   "session",
   {
@@ -49,6 +54,7 @@ export const sessions = pgTable(
   ],
 );
 
+export type Account = InferSelectModel<typeof accounts>;
 export const accounts = pgTable(
   "account",
   {
@@ -85,6 +91,7 @@ export const accounts = pgTable(
   ],
 );
 
+export type Verification = InferSelectModel<typeof verifications>;
 export const verifications = pgTable(
   "verification",
   {
@@ -107,6 +114,7 @@ export const verifications = pgTable(
   ],
 );
 
+export type NotionIntegration = InferSelectModel<typeof notionIntegrations>;
 export const notionIntegrations = pgTable(
   "notion_integration",
   {
@@ -140,5 +148,3 @@ export const schema = {
   verification: verifications,
   notionIntegration: notionIntegrations,
 };
-
-export type NotionIntegration = typeof notionIntegrations.$inferSelect;
