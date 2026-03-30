@@ -1,4 +1,4 @@
-// Types for the result object with discriminated union
+// Promise wrapper that converts thrown async errors into a data/error result.
 type Success<T> = {
   data: T;
   error: null;
@@ -9,9 +9,8 @@ type Failure<E> = {
   error: E;
 };
 
-type Result<T, E = Error> = Success<T> | Failure<E>;
+export type Result<T, E = Error> = Success<T> | Failure<E>;
 
-// Main wrapper function
 export async function tryCatch<T, E = Error>(
   promise: Promise<T>,
 ): Promise<Result<T, E>> {

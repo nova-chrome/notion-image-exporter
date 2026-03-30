@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { notionIntegrationPersistenceErrorMessage } from "~/lib/notion-integration-route-error";
 import {
   deleteUserIntegration,
   renameUserIntegration,
 } from "~/lib/notion-integrations";
 import { getSession } from "~/lib/session";
+import { tryCatch } from "~/util/try-catch";
 
 const renameIntegrationSchema = z.object({
   label: z.string().trim().min(1, "Label is required.").max(100),
@@ -34,30 +36,31 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  try {
-    const integration = await renameUserIntegration({
+  const renameResult = await tryCatch(
+    renameUserIntegration({
       userId: session.user.id,
       integrationId,
       label: result.data.label,
-    });
+    }),
+  );
 
-    if (!integration) {
-      return Response.json(
-        { error: "Integration not found." },
-        { status: 404 },
-      );
-    }
-
-    return Response.json({ integration });
-  } catch (error) {
-    const message =
-      error instanceof Error &&
-      error.message.includes("notion_integration_user_label_unique")
-        ? "You already have an integration with that label."
-        : "Could not rename that integration.";
-
-    return Response.json({ error: message }, { status: 400 });
+  if (renameResult.error !== null) {
+    return Response.json(
+      {
+        error: notionIntegrationPersistenceErrorMessage(
+          renameResult.error,
+          "Could not rename that integration.",
+        ),
+      },
+      { status: 400 },
+    );
   }
+
+  if (!renameResult.data) {
+    return Response.json({ error: "Integration not found." }, { status: 404 });
+  }
+
+  return Response.json({ integration: renameResult.data });
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {

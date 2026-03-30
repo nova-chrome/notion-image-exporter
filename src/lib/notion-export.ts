@@ -62,7 +62,7 @@ export async function exportNotionImagesZipResponse(input: {
   const imagesResult = await tryCatch<CollectedImage[], unknown>(
     collectImagesFromPage(client, pageId),
   );
-  if (imagesResult.error) {
+  if (imagesResult.error !== null) {
     const error = imagesResult.error;
     if (APIResponseError.isAPIResponseError(error)) {
       return Response.json(
@@ -76,9 +76,6 @@ export async function exportNotionImagesZipResponse(input: {
     throw error;
   }
   const images = imagesResult.data;
-  if (!images) {
-    throw new Error("Unexpected tryCatch result for images");
-  }
 
   if (images.length === 0) {
     return Response.json(
@@ -94,7 +91,7 @@ export async function exportNotionImagesZipResponse(input: {
   const usedPaths = new Set<string>();
   const errors: string[] = [];
 
-  for (let i = 0; i < images.length; i++) {
+  for (let i = 0; i < images.length; i += 1) {
     const img = images[i];
     const fetchResult = await tryCatch<Response, unknown>(
       fetch(img.url, {
@@ -102,19 +99,14 @@ export async function exportNotionImagesZipResponse(input: {
         headers: { "User-Agent": "notion-image-exporter/0.1" },
       }),
     );
-    if (fetchResult.error) {
+    if (fetchResult.error !== null) {
       const error = fetchResult.error;
       errors.push(
         `${img.blockId}: fetch failed — ${error instanceof Error ? error.message : String(error)}`,
       );
       continue;
     }
-
     const res = fetchResult.data;
-    if (!res) {
-      errors.push(`${img.blockId}: fetch failed — empty response`);
-      continue;
-    }
 
     if (!res.ok) {
       errors.push(`${img.blockId}: HTTP ${res.status}`);

@@ -48,6 +48,11 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import {
+  errorMessage,
+  readJsonBody,
+  responseErrorMessage,
+} from "~/lib/http-error";
 import { tryCatch } from "~/util/try-catch";
 
 type IntegrationSummary = {
@@ -122,6 +127,24 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
     });
   }
 
+  async function runAsyncAction(input: {
+    setError: (message: string | null) => void;
+    setPending: (pending: boolean) => void;
+    fallbackMessage: string;
+    action: () => Promise<void>;
+  }) {
+    input.setError(null);
+    input.setPending(true);
+
+    const result = await tryCatch(input.action());
+    if (result.error !== null) {
+      input.setError(errorMessage(result.error, input.fallbackMessage));
+    }
+
+    input.setPending(false);
+    return result.error === null;
+  }
+
   async function submitJson(input: {
     url: string;
     method: "POST" | "PATCH" | "DELETE";
@@ -133,19 +156,11 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
       body: input.body ? JSON.stringify(input.body) : undefined,
     });
 
-    const jsonResult = await tryCatch<{ error?: string }, unknown>(
-      res.json() as Promise<{ error?: string }>,
-    );
-
     if (!res.ok) {
-      throw new Error(
-        (!jsonResult.error && jsonResult.data?.error) ||
-          res.statusText ||
-          "Request failed",
-      );
+      throw new Error(await responseErrorMessage(res, "Request failed"));
     }
 
-    return jsonResult.error ? null : jsonResult.data;
+    return readJsonBody(res);
   }
 
   async function onExportSubmit(event: FormEvent) {
@@ -163,125 +178,103 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
       return;
     }
 
-    setExportPending(true);
+    await runAsyncAction({
+      setError: setExportError,
+      setPending: setExportPending,
+      fallbackMessage: "Something went wrong.",
+      action: async () => {
+        const res = await fetch("/api/notion-images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pageIdOrUrl: trimmed,
+            integrationId: selectedIntegrationId,
+          }),
+        });
 
-    try {
-      const res = await fetch("/api/notion-images", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pageIdOrUrl: trimmed,
-          integrationId: selectedIntegrationId,
-        }),
-      });
+        if (!res.ok) {
+          setExportError(await responseErrorMessage(res, "Export failed"));
+          return;
+        }
 
-      if (!res.ok) {
-        const jsonResult = await tryCatch<{ error?: string }, unknown>(
-          res.json() as Promise<{ error?: string }>,
-        );
-        setExportError(
-          (!jsonResult.error && jsonResult.data?.error) ||
-            res.statusText ||
-            "Export failed",
-        );
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download =
-        filenameFromContentDisposition(
-          res.headers.get("Content-Disposition"),
-        ) ?? "notion-images.zip";
-      anchor.rel = "noopener";
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      await refresh();
-    } catch (error) {
-      setExportError(
-        error instanceof Error ? error.message : "Something went wrong.",
-      );
-    } finally {
-      setExportPending(false);
-    }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download =
+          filenameFromContentDisposition(
+            res.headers.get("Content-Disposition"),
+          ) ?? "notion-images.zip";
+        anchor.rel = "noopener";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        await refresh();
+      },
+    });
   }
 
   async function onCreateIntegration(event: FormEvent) {
     event.preventDefault();
-    setMutationError(null);
-    setMutationPending(true);
-
-    try {
-      await submitJson({
-        url: "/api/notion-integrations",
-        method: "POST",
-        body: {
-          label: createLabel.trim(),
-          secret: createSecret.trim(),
-        },
-      });
-      setCreateOpen(false);
-      setCreateLabel("");
-      setCreateSecret("");
-      await refresh();
-    } catch (error) {
-      setMutationError(
-        error instanceof Error ? error.message : "Request failed",
-      );
-    } finally {
-      setMutationPending(false);
-    }
+    await runAsyncAction({
+      setError: setMutationError,
+      setPending: setMutationPending,
+      fallbackMessage: "Request failed",
+      action: async () => {
+        await submitJson({
+          url: "/api/notion-integrations",
+          method: "POST",
+          body: {
+            label: createLabel.trim(),
+            secret: createSecret.trim(),
+          },
+        });
+        setCreateOpen(false);
+        setCreateLabel("");
+        setCreateSecret("");
+        await refresh();
+      },
+    });
   }
 
   async function onRenameIntegration(event: FormEvent) {
     event.preventDefault();
     if (!renameTarget) return;
 
-    setMutationError(null);
-    setMutationPending(true);
-
-    try {
-      await submitJson({
-        url: `/api/notion-integrations/${renameTarget.id}`,
-        method: "PATCH",
-        body: {
-          label: renameLabel.trim(),
-        },
-      });
-      setRenameOpen(false);
-      setRenameTarget(null);
-      setRenameLabel("");
-      await refresh();
-    } catch (error) {
-      setMutationError(
-        error instanceof Error ? error.message : "Request failed",
-      );
-    } finally {
-      setMutationPending(false);
-    }
+    await runAsyncAction({
+      setError: setMutationError,
+      setPending: setMutationPending,
+      fallbackMessage: "Request failed",
+      action: async () => {
+        await submitJson({
+          url: `/api/notion-integrations/${renameTarget.id}`,
+          method: "PATCH",
+          body: {
+            label: renameLabel.trim(),
+          },
+        });
+        setRenameOpen(false);
+        setRenameTarget(null);
+        setRenameLabel("");
+        await refresh();
+      },
+    });
   }
 
   async function onDeleteIntegration(integrationId: string) {
-    setMutationError(null);
-    setMutationPending(true);
-
-    try {
-      await submitJson({
-        url: `/api/notion-integrations/${integrationId}`,
-        method: "DELETE",
-      });
-      await refresh();
-    } catch (error) {
-      setMutationError(
-        error instanceof Error ? error.message : "Request failed",
-      );
-    } finally {
-      setMutationPending(false);
-    }
+    await runAsyncAction({
+      setError: setMutationError,
+      setPending: setMutationPending,
+      fallbackMessage: "Request failed",
+      action: async () => {
+        await submitJson({
+          url: `/api/notion-integrations/${integrationId}`,
+          method: "DELETE",
+        });
+        await refresh();
+      },
+    });
   }
 
   function openRenameDialog(integration: IntegrationSummary) {
