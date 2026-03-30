@@ -1,8 +1,16 @@
-# Notion image exporter
+# Notion Image Exporter
 
-Small [Next.js](https://nextjs.org) app that collects images from **Files & media** (and any other **`files` page properties**) and from **image blocks** in the page body (including nested blocks), fetches each URL **on the server**, and returns a **ZIP** download. That avoids saving through the browser, where Notion often serves **WebP** or other optimized formats.
+A small [Next.js](https://nextjs.org) app that downloads images from a Notion page (from **Files & media** and any `files` page properties, plus **`image` blocks** in the body, including nested blocks), fetches each image URL **on the server**, and returns them as a **ZIP**.
 
-## Setup
+This avoids browser-side saves where Notion often serves optimized formats like **WebP**.
+
+## What it downloads
+
+- Images from **Files & media** (and any other `files` properties)
+- Images from **`image` blocks** in the page body, including nested blocks
+- A ZIP containing the downloaded images (plus `_fetch-errors.txt` when some URLs fail)
+
+## Quickstart
 
 ### 1. Create a Notion internal integration
 
@@ -33,22 +41,37 @@ Open [http://localhost:3000](http://localhost:3000), paste the **page URL** or *
 
 ## How it works
 
-- **POST** [`/api/notion-images`](src/app/api/notion-images/route.ts) accepts JSON `{ "pageIdOrUrl": "…" }`.
-- The server parses the page ID, reads **`files` properties** (e.g. Files & media) from the page, walks **block children** recursively for `image` blocks, downloads each URL, and builds a ZIP.
-- Failed downloads are listed in `_fetch-errors.txt` inside the ZIP when some images could not be fetched.
-- File extensions come from `Content-Type` when possible, with a fallback from the URL path.
+- The homepage sends a `POST` to [`/api/notion-images`](src/app/api/notion-images/route.ts) with JSON `{ "pageIdOrUrl": "..." }`.
+- The server parses the page ID, collects `files` properties (including **Files & media**) and recursively walks block children for `image` blocks.
+- It downloads each image URL on the server and stores the bytes in a ZIP.
+- If some downloads fail, the ZIP includes `_fetch-errors.txt` listing the failures.
+- File extensions are picked from `Content-Type` when possible, otherwise from the URL path (final fallback: `bin`).
+
+## ZIP contents
+
+- Each downloaded image is stored as its own entry in the ZIP.
+- The entry base name is derived from the source caption/name when available; otherwise it falls back to `image-001`, `image-002`, etc.
+- If names would collide, it appends `-2`, `-3`, ... to keep entries unique.
 
 ## Limitations
 
-- Notion file URLs expire; the app fetches images immediately after listing blocks.
-- The bytes you get are whatever Notion serves for that API URL; if Notion stores or transcodes an asset in a given format, that is what you will download.
-- **Page cover** and **icon** are not included unless you extend the code. Inline embeds/previews are not scraped beyond **image** blocks and **files** properties.
+- Notion file URLs can expire; downloads happen immediately after collecting the image URLs.
+- The bytes you download are whatever Notion serves for those URLs (so the format depends on what Notion provides/transcodes).
+- Page cover and icon are not included unless you extend the code.
+- The exporter targets only `image` blocks and `files` properties (it does not scrape other embeds/previews).
 
-## Scripts
+## Troubleshooting
 
-| Command        | Description        |
-| -------------- | ------------------ |
-| `npm run dev`  | Development server |
-| `npm run build` | Production build  |
-| `npm run start` | Start production  |
-| `npm run lint`  | Biome check       |
+- `Missing NOTION_INTEGRATION_SECRET`: copy `.env.example` to `.env.local` and set `NOTION_INTEGRATION_SECRET`.
+- “No images found”: the page doesn’t have any `files` properties (including “Files & media”) and/or no `image` blocks in its body.
+- “Could not download any images” (HTTP 502): usually integration permission issues or image URLs that have expired; try exporting right after connecting the integration, and make sure the integration is connected to the page.
+
+## Development scripts
+
+| Command         | Description        |
+| --------------  | ------------------ |
+| `npm run dev`   | Development server |
+| `npm run build` | Production build   |
+| `npm run start` | Start production   |
+| `npm run format`| Format code        |
+| `npm run lint`  | Biome check        |
