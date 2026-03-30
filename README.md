@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Notion image exporter
 
-## Getting Started
+Small [Next.js](https://nextjs.org) app that collects images from **Files & media** (and any other **`files` page properties**) and from **image blocks** in the page body (including nested blocks), fetches each URL **on the server**, and returns a **ZIP** download. That avoids saving through the browser, where Notion often serves **WebP** or other optimized formats.
 
-First, run the development server:
+## Setup
+
+### 1. Create a Notion internal integration
+
+1. Open [My integrations](https://www.notion.so/my-integrations).
+2. Create a new integration (internal).
+3. Copy the **Internal Integration Secret**.
+
+### 2. Connect the integration to the page
+
+Open the Notion page → **⋯** (top right) → **Connections** / **Add connections** → pick your integration. Without this, the API returns forbidden / not found.
+
+### 3. Configure the app
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set `NOTION_INTEGRATION_SECRET` in `.env.local` to the secret from step 1.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Run locally
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000), paste the **page URL** or **page ID**, then **Download images as ZIP**.
 
-To learn more about Next.js, take a look at the following resources:
+## How it works
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **POST** [`/api/notion-images`](src/app/api/notion-images/route.ts) accepts JSON `{ "pageIdOrUrl": "…" }`.
+- The server parses the page ID, reads **`files` properties** (e.g. Files & media) from the page, walks **block children** recursively for `image` blocks, downloads each URL, and builds a ZIP.
+- Failed downloads are listed in `_fetch-errors.txt` inside the ZIP when some images could not be fetched.
+- File extensions come from `Content-Type` when possible, with a fallback from the URL path.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Limitations
 
-## Deploy on Vercel
+- Notion file URLs expire; the app fetches images immediately after listing blocks.
+- The bytes you get are whatever Notion serves for that API URL; if Notion stores or transcodes an asset in a given format, that is what you will download.
+- **Page cover** and **icon** are not included unless you extend the code. Inline embeds/previews are not scraped beyond **image** blocks and **files** properties.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command        | Description        |
+| -------------- | ------------------ |
+| `npm run dev`  | Development server |
+| `npm run build` | Production build  |
+| `npm run start` | Start production  |
+| `npm run lint`  | Biome check       |
