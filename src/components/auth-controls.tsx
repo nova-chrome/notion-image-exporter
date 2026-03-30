@@ -16,7 +16,7 @@ export function SignInButton() {
 
     const result = await authClient.signIn.social({
       provider: "github",
-      callbackURL: "/app",
+      callbackURL: "/",
     });
 
     if (result.error) {
@@ -43,7 +43,7 @@ export function SignOutButton() {
   async function onSignOut() {
     setPending(true);
     await authClient.signOut();
-    router.push("/");
+    router.push("/login");
     router.refresh();
   }
 
