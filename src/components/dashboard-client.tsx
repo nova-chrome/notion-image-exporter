@@ -319,15 +319,20 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
                 </DialogHeader>
                 <form
                   className="flex flex-col gap-5 p-5"
+                  autoComplete="off"
                   onSubmit={onCreateIntegration}
                 >
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="create-label">Label</Label>
                     <Input
                       id="create-label"
+                      name="notionIntegrationLabel"
                       value={createLabel}
                       onChange={(event) => setCreateLabel(event.target.value)}
                       placeholder="Personal workspace"
+                      autoComplete="off"
+                      data-1p-ignore="true"
+                      data-lpignore="true"
                       disabled={mutationPending}
                     />
                   </div>
@@ -335,10 +340,14 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
                     <Label htmlFor="create-secret">Integration secret</Label>
                     <Input
                       id="create-secret"
+                      name="notionIntegrationSecret"
                       type="password"
                       value={createSecret}
                       onChange={(event) => setCreateSecret(event.target.value)}
                       placeholder="ntn_..."
+                      autoComplete="new-password"
+                      data-1p-ignore="true"
+                      data-lpignore="true"
                       disabled={mutationPending}
                     />
                   </div>
