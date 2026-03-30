@@ -4,7 +4,7 @@ import {
   createHash,
   randomBytes,
 } from "node:crypto";
-import { env } from "~/lib/env";
+import { env } from "~/env";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;

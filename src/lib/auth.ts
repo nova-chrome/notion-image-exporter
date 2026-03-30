@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { getDb } from "~/db";
 import { schema } from "~/db/schema";
-import { env } from "~/lib/env";
+import { env } from "~/env";
 
 function createAuth() {
   return betterAuth({

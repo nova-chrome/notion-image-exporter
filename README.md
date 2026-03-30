@@ -28,7 +28,16 @@ Open the Notion page → **⋯** (top right) → **Connections** / **Add connect
 cp .env.example .env.local
 ```
 
-Set `NOTION_INTEGRATION_SECRET` in `.env.local` to the secret from step 1.
+Fill in the required values from `.env.example`:
+
+- `DATABASE_URL`
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
+- `NOTION_INTEGRATION_ENCRYPTION_KEY`
+
+The Notion integration secret from step 1 is entered in the app UI after sign-in and stored encrypted in the database.
 
 ### 4. Run locally
 
@@ -62,7 +71,7 @@ Open [http://localhost:3000](http://localhost:3000), paste the **page URL** or *
 
 ## Troubleshooting
 
-- `Missing NOTION_INTEGRATION_SECRET`: copy `.env.example` to `.env.local` and set `NOTION_INTEGRATION_SECRET`.
+- `Invalid environment variables`: copy `.env.example` to `.env.local` and fill in every required value.
 - “No images found”: the page doesn’t have any `files` properties (including “Files & media”) and/or no `image` blocks in its body.
 - “Could not download any images” (HTTP 502): usually integration permission issues or image URLs that have expired; try exporting right after connecting the integration, and make sure the integration is connected to the page.
 
