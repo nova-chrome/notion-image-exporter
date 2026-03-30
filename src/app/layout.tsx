@@ -6,6 +6,7 @@ import {
   Merriweather,
 } from "next/font/google";
 import "./globals.css";
+import { QueryProvider } from "~/components/query-provider";
 import { cn } from "~/lib/utils";
 
 const merriweatherHeading = Merriweather({
@@ -52,7 +53,9 @@ export default function RootLayout({
         merriweatherHeading.variable,
       )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   );
 }

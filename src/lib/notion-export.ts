@@ -75,7 +75,7 @@ export async function exportNotionImagesZipResponse(input: {
     }
     throw error;
   }
-  const images = imagesResult.data;
+  const images = imagesResult.data ?? [];
 
   if (images.length === 0) {
     return Response.json(
@@ -107,6 +107,10 @@ export async function exportNotionImagesZipResponse(input: {
       continue;
     }
     const res = fetchResult.data;
+    if (!res) {
+      errors.push(`${img.blockId}: fetch failed — Empty response`);
+      continue;
+    }
 
     if (!res.ok) {
       errors.push(`${img.blockId}: HTTP ${res.status}`);

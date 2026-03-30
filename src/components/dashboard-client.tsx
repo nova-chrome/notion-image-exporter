@@ -8,8 +8,8 @@ import {
   RiPencilLine,
   RiShieldKeyholeLine,
 } from "@remixicon/react";
-import { useRouter } from "next/navigation";
-import { type FormEvent, startTransition, useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type FormEvent, useEffect, useState } from "react";
 import { SignOutButton } from "~/components/auth-controls";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
@@ -48,20 +48,17 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { errorMessage } from "~/lib/http-error";
 import {
-  errorMessage,
-  readJsonBody,
-  responseErrorMessage,
-} from "~/lib/http-error";
-import { tryCatch } from "~/util/try-catch";
-
-type IntegrationSummary = {
-  id: string;
-  label: string;
-  createdAt: string;
-  updatedAt: string;
-  lastUsedAt: string | null;
-};
+  createIntegrationRequest,
+  deleteIntegrationRequest,
+  exportImagesRequest,
+  integrationListQueryKey,
+  integrationListQueryOptions,
+  renameIntegrationRequest,
+} from "~/lib/integration-queries";
+import type { IntegrationSummary } from "~/lib/notion-integrations";
+import { downloadBlob } from "~/util/download-blob";
 
 type DashboardClientProps = {
   user: {
@@ -69,7 +66,6 @@ type DashboardClientProps = {
     email: string;
     image?: string | null;
   };
-  integrations: IntegrationSummary[];
 };
 
 function formatDate(value: string | null) {
@@ -81,20 +77,11 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function filenameFromContentDisposition(header: string | null): string | null {
-  if (!header) return null;
-  const match = /filename\*?=(?:UTF-8''|")?([^";\n]+)"?/i.exec(header);
-  return match?.[1]?.trim() ?? null;
-}
-
-export function DashboardClient({ user, integrations }: DashboardClientProps) {
-  const router = useRouter();
-  const [selectedIntegrationId, setSelectedIntegrationId] = useState(
-    integrations[0]?.id ?? "",
-  );
+export function DashboardClient({ user }: DashboardClientProps) {
+  const queryClient = useQueryClient();
+  const [selectedIntegrationId, setSelectedIntegrationId] = useState("");
   const [pageIdOrUrl, setPageIdOrUrl] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
-  const [exportPending, setExportPending] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -104,7 +91,76 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
   const [createLabel, setCreateLabel] = useState("");
   const [createSecret, setCreateSecret] = useState("");
   const [renameLabel, setRenameLabel] = useState("");
-  const [mutationPending, setMutationPending] = useState(false);
+  const integrationsQuery = useQuery(integrationListQueryOptions());
+  const integrations = integrationsQuery.data ?? [];
+
+  async function invalidateIntegrations() {
+    await queryClient.invalidateQueries({ queryKey: integrationListQueryKey });
+  }
+
+  const createIntegrationMutation = useMutation({
+    mutationFn: createIntegrationRequest,
+    onMutate: () => {
+      setMutationError(null);
+    },
+    onSuccess: async () => {
+      setCreateOpen(false);
+      setCreateLabel("");
+      setCreateSecret("");
+      await invalidateIntegrations();
+    },
+    onError: (error) => {
+      setMutationError(errorMessage(error, "Request failed."));
+    },
+  });
+
+  const renameIntegrationMutation = useMutation({
+    mutationFn: renameIntegrationRequest,
+    onMutate: () => {
+      setMutationError(null);
+    },
+    onSuccess: async () => {
+      setRenameOpen(false);
+      setRenameTarget(null);
+      setRenameLabel("");
+      await invalidateIntegrations();
+    },
+    onError: (error) => {
+      setMutationError(errorMessage(error, "Request failed."));
+    },
+  });
+
+  const deleteIntegrationMutation = useMutation({
+    mutationFn: deleteIntegrationRequest,
+    onMutate: () => {
+      setMutationError(null);
+    },
+    onSuccess: async () => {
+      await invalidateIntegrations();
+    },
+    onError: (error) => {
+      setMutationError(errorMessage(error, "Request failed."));
+    },
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: exportImagesRequest,
+    onMutate: () => {
+      setExportError(null);
+    },
+    onSuccess: async (result) => {
+      downloadBlob(result);
+      await invalidateIntegrations();
+    },
+    onError: (error) => {
+      setExportError(errorMessage(error, "Something went wrong."));
+    },
+  });
+
+  const mutationPending =
+    createIntegrationMutation.isPending ||
+    renameIntegrationMutation.isPending ||
+    deleteIntegrationMutation.isPending;
 
   useEffect(() => {
     if (integrations.length === 0) {
@@ -121,48 +177,6 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
     }
   }, [integrations, selectedIntegrationId]);
 
-  async function refresh() {
-    startTransition(() => {
-      router.refresh();
-    });
-  }
-
-  async function runAsyncAction(input: {
-    setError: (message: string | null) => void;
-    setPending: (pending: boolean) => void;
-    fallbackMessage: string;
-    action: () => Promise<void>;
-  }) {
-    input.setError(null);
-    input.setPending(true);
-
-    const result = await tryCatch(input.action());
-    if (result.error !== null) {
-      input.setError(errorMessage(result.error, input.fallbackMessage));
-    }
-
-    input.setPending(false);
-    return result.error === null;
-  }
-
-  async function submitJson(input: {
-    url: string;
-    method: "POST" | "PATCH" | "DELETE";
-    body?: Record<string, string>;
-  }) {
-    const res = await fetch(input.url, {
-      method: input.method,
-      headers: input.body ? { "Content-Type": "application/json" } : undefined,
-      body: input.body ? JSON.stringify(input.body) : undefined,
-    });
-
-    if (!res.ok) {
-      throw new Error(await responseErrorMessage(res, "Request failed"));
-    }
-
-    return readJsonBody(res);
-  }
-
   async function onExportSubmit(event: FormEvent) {
     event.preventDefault();
     setExportError(null);
@@ -178,63 +192,18 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
       return;
     }
 
-    await runAsyncAction({
-      setError: setExportError,
-      setPending: setExportPending,
-      fallbackMessage: "Something went wrong.",
-      action: async () => {
-        const res = await fetch("/api/notion-images", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            pageIdOrUrl: trimmed,
-            integrationId: selectedIntegrationId,
-          }),
-        });
-
-        if (!res.ok) {
-          setExportError(await responseErrorMessage(res, "Export failed"));
-          return;
-        }
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download =
-          filenameFromContentDisposition(
-            res.headers.get("Content-Disposition"),
-          ) ?? "notion-images.zip";
-        anchor.rel = "noopener";
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(url);
-        await refresh();
-      },
+    await exportMutation.mutateAsync({
+      pageIdOrUrl: trimmed,
+      integrationId: selectedIntegrationId,
     });
   }
 
   async function onCreateIntegration(event: FormEvent) {
     event.preventDefault();
-    await runAsyncAction({
-      setError: setMutationError,
-      setPending: setMutationPending,
-      fallbackMessage: "Request failed",
-      action: async () => {
-        await submitJson({
-          url: "/api/notion-integrations",
-          method: "POST",
-          body: {
-            label: createLabel.trim(),
-            secret: createSecret.trim(),
-          },
-        });
-        setCreateOpen(false);
-        setCreateLabel("");
-        setCreateSecret("");
-        await refresh();
-      },
+
+    await createIntegrationMutation.mutateAsync({
+      label: createLabel.trim(),
+      secret: createSecret.trim(),
     });
   }
 
@@ -242,39 +211,14 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
     event.preventDefault();
     if (!renameTarget) return;
 
-    await runAsyncAction({
-      setError: setMutationError,
-      setPending: setMutationPending,
-      fallbackMessage: "Request failed",
-      action: async () => {
-        await submitJson({
-          url: `/api/notion-integrations/${renameTarget.id}`,
-          method: "PATCH",
-          body: {
-            label: renameLabel.trim(),
-          },
-        });
-        setRenameOpen(false);
-        setRenameTarget(null);
-        setRenameLabel("");
-        await refresh();
-      },
+    await renameIntegrationMutation.mutateAsync({
+      integrationId: renameTarget.id,
+      label: renameLabel.trim(),
     });
   }
 
   async function onDeleteIntegration(integrationId: string) {
-    await runAsyncAction({
-      setError: setMutationError,
-      setPending: setMutationPending,
-      fallbackMessage: "Request failed",
-      action: async () => {
-        await submitJson({
-          url: `/api/notion-integrations/${integrationId}`,
-          method: "DELETE",
-        });
-        await refresh();
-      },
-    });
+    await deleteIntegrationMutation.mutateAsync(integrationId);
   }
 
   function openRenameDialog(integration: IntegrationSummary) {
@@ -371,6 +315,18 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
           </div>
         </section>
 
+        {integrationsQuery.isError ? (
+          <Alert className="border-destructive/40 bg-destructive/5">
+            <AlertTitle>Could not load integrations</AlertTitle>
+            <AlertDescription>
+              {errorMessage(
+                integrationsQuery.error,
+                "Could not load saved integrations.",
+              )}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {mutationError ? (
           <Alert className="border-destructive/40 bg-destructive/5">
             <AlertTitle>Integration update failed</AlertTitle>
@@ -394,7 +350,11 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {integrations.length === 0 ? (
+                {integrationsQuery.isPending ? (
+                  <p className="text-sm text-muted-foreground">
+                    Loading saved integrations…
+                  </p>
+                ) : integrations.length === 0 ? (
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia>
@@ -449,7 +409,7 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
                             setPageIdOrUrl(event.target.value)
                           }
                           placeholder="https://www.notion.so/... or UUID"
-                          disabled={exportPending}
+                          disabled={exportMutation.isPending}
                         />
                       </div>
                     </div>
@@ -466,9 +426,15 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
                         The selected integration stays server-side. Only the ZIP
                         is sent back.
                       </p>
-                      <Button type="submit" size="lg" disabled={exportPending}>
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={exportMutation.isPending}
+                      >
                         <RiDownload2Line data-icon="inline-start" aria-hidden />
-                        {exportPending ? "Building ZIP…" : "Download images"}
+                        {exportMutation.isPending
+                          ? "Building ZIP…"
+                          : "Download images"}
                       </Button>
                     </div>
                   </form>
@@ -478,77 +444,95 @@ export function DashboardClient({ user, integrations }: DashboardClientProps) {
           </TabsContent>
 
           <TabsContent value="integrations">
-            <div className="grid gap-4">
-              {integrations.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia>
-                      <RiFolderKeyholeLine aria-hidden />
-                    </EmptyMedia>
-                    <EmptyTitle>No saved integrations</EmptyTitle>
-                    <EmptyDescription>
-                      Add as many Notion internal integrations as you need, then
-                      switch between accounts per export.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <Button type="button" onClick={() => setCreateOpen(true)}>
-                      <RiAddLine data-icon="inline-start" aria-hidden />
-                      Add your first integration
-                    </Button>
-                  </EmptyContent>
-                </Empty>
-              ) : (
-                integrations.map((integration) => (
-                  <Card key={integration.id}>
-                    <CardHeader>
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div className="flex flex-col gap-2">
-                          <CardTitle>{integration.label}</CardTitle>
-                          <CardDescription>
-                            Last used {formatDate(integration.lastUsedAt)}
-                          </CardDescription>
+            {integrationsQuery.isPending ? (
+              <Card>
+                <CardContent className="pt-6 text-sm text-muted-foreground">
+                  Loading saved integrations…
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {integrations.length === 0 ? (
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia>
+                        <RiFolderKeyholeLine aria-hidden />
+                      </EmptyMedia>
+                      <EmptyTitle>No saved integrations</EmptyTitle>
+                      <EmptyDescription>
+                        Add as many Notion internal integrations as you need,
+                        then switch between accounts per export.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button type="button" onClick={() => setCreateOpen(true)}>
+                        <RiAddLine data-icon="inline-start" aria-hidden />
+                        Add your first integration
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                ) : (
+                  integrations.map((integration) => (
+                    <Card key={integration.id}>
+                      <CardHeader>
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="flex flex-col gap-2">
+                            <CardTitle>{integration.label}</CardTitle>
+                            <CardDescription>
+                              Last used {formatDate(integration.lastUsedAt)}
+                            </CardDescription>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => openRenameDialog(integration)}
+                              disabled={mutationPending}
+                            >
+                              <RiPencilLine
+                                data-icon="inline-start"
+                                aria-hidden
+                              />
+                              Rename
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              onClick={() =>
+                                onDeleteIntegration(integration.id)
+                              }
+                              disabled={mutationPending}
+                            >
+                              <RiDeleteBinLine
+                                data-icon="inline-start"
+                                aria-hidden
+                              />
+                              Delete
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => openRenameDialog(integration)}
-                            disabled={mutationPending}
-                          >
-                            <RiPencilLine
-                              data-icon="inline-start"
-                              aria-hidden
-                            />
-                            Rename
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => onDeleteIntegration(integration.id)}
-                            disabled={mutationPending}
-                          >
-                            <RiDeleteBinLine
-                              data-icon="inline-start"
-                              aria-hidden
-                            />
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
-                      <p>Created {formatDate(integration.createdAt)}</p>
-                      <p>Updated {formatDate(integration.updatedAt)}</p>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
+                      </CardHeader>
+                      <CardContent className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
+                        <p>Created {formatDate(integration.createdAt)}</p>
+                        <p>Updated {formatDate(integration.updatedAt)}</p>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
-        <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <Dialog
+          open={renameOpen}
+          onOpenChange={(open) => {
+            setRenameOpen(open);
+            if (!open) {
+              setRenameTarget(null);
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Rename integration</DialogTitle>

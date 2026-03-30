@@ -2,6 +2,7 @@ import { z } from "zod";
 import { notionIntegrationPersistenceErrorMessage } from "~/lib/notion-integration-route-error";
 import {
   createUserIntegration,
+  listUserIntegrations,
   validateNotionIntegrationSecret,
 } from "~/lib/notion-integrations";
 import { getSession } from "~/lib/session";
@@ -11,6 +12,19 @@ const createIntegrationSchema = z.object({
   label: z.string().trim().min(1, "Label is required.").max(100),
   secret: z.string().trim().min(1, "Secret is required."),
 });
+
+export async function GET() {
+  const session = await getSession();
+  if (!session) {
+    return Response.json(
+      { error: "Authentication required." },
+      { status: 401 },
+    );
+  }
+
+  const integrations = await listUserIntegrations(session.user.id);
+  return Response.json({ integrations });
+}
 
 export async function POST(request: Request) {
   const session = await getSession();
