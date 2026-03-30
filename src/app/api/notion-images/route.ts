@@ -11,6 +11,7 @@ import {
   collectImagesFromPage,
 } from "~/lib/notion-collect-images";
 import { parseNotionPageId } from "~/lib/notion-page-id";
+import { tryCatch } from "~/util/try-catch";
 
 export const runtime = "nodejs";
 
@@ -62,12 +63,13 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: PostBody;
-  try {
-    body = (await request.json()) as PostBody;
-  } catch {
+  const bodyResult = await tryCatch<PostBody>(
+    request.json() as Promise<PostBody>,
+  );
+  if (bodyResult.error) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+  const body = bodyResult.data;
 
   const pageIdOrUrl = body.pageIdOrUrl?.trim();
   if (!pageIdOrUrl) {
@@ -87,10 +89,11 @@ export async function POST(request: Request) {
 
   const client = new Client({ auth: secret });
 
-  let images: CollectedImage[];
-  try {
-    images = await collectImagesFromPage(client, pageId);
-  } catch (error) {
+  const imagesResult = await tryCatch<CollectedImage[], unknown>(
+    collectImagesFromPage(client, pageId),
+  );
+  if (imagesResult.error) {
+    const error = imagesResult.error;
     if (APIResponseError.isAPIResponseError(error)) {
       return Response.json(
         { error: error.message, code: error.code },
@@ -101,6 +104,12 @@ export async function POST(request: Request) {
       );
     }
     throw error;
+  }
+  const images = imagesResult.data;
+  if (!images) {
+    // `tryCatch` represents failures as `{ data: null, error: ... }`.
+    // This branch should be unreachable because we already handled `error`.
+    throw new Error("Unexpected tryCatch result for images");
   }
 
   if (images.length === 0) {
@@ -119,16 +128,23 @@ export async function POST(request: Request) {
 
   for (let i = 0; i < images.length; i++) {
     const img = images[i];
-    let res: Response;
-    try {
-      res = await fetch(img.url, {
+    const fetchResult = await tryCatch<Response, unknown>(
+      fetch(img.url, {
         redirect: "follow",
         headers: { "User-Agent": "notion-image-exporter/0.1" },
-      });
-    } catch (e) {
+      }),
+    );
+    if (fetchResult.error) {
+      const e = fetchResult.error;
       errors.push(
         `${img.blockId}: fetch failed — ${e instanceof Error ? e.message : String(e)}`,
       );
+      continue;
+    }
+    const res = fetchResult.data;
+    if (!res) {
+      // Should be unreachable because `error` was falsey above, but keeps TS happy.
+      errors.push(`${img.blockId}: fetch failed — empty response`);
       continue;
     }
 

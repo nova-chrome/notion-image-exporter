@@ -4,6 +4,7 @@ import { RiDownload2Line } from "@remixicon/react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { tryCatch } from "~/util/try-catch";
 
 function filenameFromContentDisposition(header: string | null): string | null {
   if (!header) return null;
@@ -35,11 +36,11 @@ export default function Home() {
 
       if (!res.ok) {
         let message = res.statusText || "Request failed";
-        try {
-          const data = (await res.json()) as { error?: string };
-          if (data.error) message = data.error;
-        } catch {
-          /* use statusText */
+        const jsonResult = await tryCatch<{ error?: string }, unknown>(
+          res.json() as Promise<{ error?: string }>,
+        );
+        if (!jsonResult.error && jsonResult.data?.error) {
+          message = jsonResult.data.error;
         }
         setError(message);
         return;
