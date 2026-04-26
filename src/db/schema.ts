@@ -141,10 +141,62 @@ export const notionIntegrations = pgTable(
   ],
 );
 
+export type ExtensionToken = InferSelectModel<typeof extensionTokens>;
+export const extensionTokens = pgTable(
+  "extension_token",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    tokenPreview: text("token_preview").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("extension_token_hash_unique").on(table.tokenHash),
+    index("extension_token_user_id_idx").on(table.userId),
+  ],
+);
+
+export type ExtensionPairingToken = InferSelectModel<
+  typeof extensionPairingTokens
+>;
+export const extensionPairingTokens = pgTable(
+  "extension_pairing_token",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("extension_pairing_token_hash_unique").on(table.tokenHash),
+    index("extension_pairing_token_user_id_idx").on(table.userId),
+  ],
+);
+
 export const schema = {
   user: users,
   session: sessions,
   account: accounts,
   verification: verifications,
   notionIntegration: notionIntegrations,
+  extensionToken: extensionTokens,
+  extensionPairingToken: extensionPairingTokens,
 };

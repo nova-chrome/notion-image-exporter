@@ -56,6 +56,31 @@ Open [http://localhost:3000](http://localhost:3000), paste the **page URL** or *
 - If some downloads fail, the ZIP includes `_fetch-errors.txt` listing the failures.
 - File extensions are picked from `Content-Type` when possible, otherwise from the URL path (final fallback: `bin`).
 
+## Chrome extension
+
+This repo includes a companion Manifest V3 extension in [`extension`](extension).
+It keeps Notion integration secrets in the app database and uses an extension
+token only to call the app API.
+
+1. Run the app and push the latest schema:
+
+   ```bash
+   npm run db:push
+   npm run dev
+   ```
+
+2. Open Chrome → Extensions → Developer mode → Load unpacked → select the
+   `extension` folder.
+3. In the extension popup, confirm the app URL (`http://localhost:3000` by
+   default), then choose **Open pairing page**.
+4. Create and copy a pairing code from the app, paste it into the extension,
+   and pair.
+5. Open a Notion page and use the extension popup to download the ZIP.
+
+For production, set the extension popup’s app URL to your deployed app URL. The
+extension is intentionally broad on host permissions so local and deployed app
+URLs both work while this is still a private tool.
+
 ## ZIP contents
 
 - Each downloaded image is stored as its own entry in the ZIP.

@@ -9,6 +9,7 @@ import {
   RiShieldKeyholeLine,
 } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import { SignOutButton } from "~/components/auth-controls";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
@@ -311,6 +312,12 @@ export function DashboardClient({ user }: DashboardClientProps) {
                 </form>
               </DialogContent>
             </Dialog>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/extension/connect">
+                <RiShieldKeyholeLine data-icon="inline-start" aria-hidden />
+                Connect extension
+              </Link>
+            </Button>
             <SignOutButton />
           </div>
         </section>

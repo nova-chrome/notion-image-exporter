@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notion Image Exporter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Notion Image Exporter</p>
+          <h1>Download page images</h1>
+        </div>
+        <button id="settings-toggle" class="icon-button" type="button" title="Settings">
+          Settings
+        </button>
+      </header>
+
+      <section id="status" class="status" hidden></section>
+
+      <section id="settings" class="panel" hidden>
+        <label class="field">
+          <span>App URL</span>
+          <input id="app-url" type="url" placeholder="http://localhost:3000" />
+        </label>
+        <label class="field">
+          <span>Pairing code</span>
+          <input id="pairing-code" type="password" placeholder="Paste code from the app" />
+        </label>
+        <div class="row">
+          <button id="open-pairing" class="button secondary" type="button">Open pairing page</button>
+          <button id="pair" class="button" type="button">Pair</button>
+        </div>
+      </section>
+
+      <section id="exporter" class="panel">
+        <label class="field">
+          <span>Integration</span>
+          <select id="integration"></select>
+        </label>
+        <label class="field">
+          <span>Page URL or ID</span>
+          <input id="page-url" type="text" placeholder="https://www.notion.so/..." />
+        </label>
+        <button id="export" class="button full" type="button">Download ZIP</button>
+      </section>
+
+      <footer class="footer">
+        <button id="refresh" class="link-button" type="button">Refresh integrations</button>
+        <button id="disconnect" class="link-button danger" type="button">Disconnect</button>
+      </footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

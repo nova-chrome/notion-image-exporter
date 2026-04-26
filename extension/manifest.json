@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Notion Image Exporter",
+  "description": "Download images from the current Notion page through your Notion Image Exporter app.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Export Notion images"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "downloads", "storage", "tabs"],
+  "host_permissions": ["<all_urls>"]
+}

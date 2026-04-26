@@ -1,0 +1,150 @@
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --fg: #27221f;
+  --muted: #6f6761;
+  --line: #ded8d2;
+  --panel: #f7f5f2;
+  --primary: #27221f;
+  --primary-fg: #ffffff;
+  --danger: #b42318;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 360px;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.header,
+.row,
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input,
+select {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 9px;
+}
+
+input:focus,
+select:focus,
+button:focus {
+  outline: 2px solid #8b7c70;
+  outline-offset: 1px;
+}
+
+.button,
+.icon-button,
+.link-button {
+  border-radius: 0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.button {
+  min-height: 34px;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: var(--primary-fg);
+  padding: 0 10px;
+}
+
+.button.secondary {
+  border-color: var(--line);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.button.full {
+  width: 100%;
+}
+
+.icon-button,
+.link-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+}
+
+.link-button.danger {
+  color: var(--danger);
+}
+
+.status {
+  border: 1px solid var(--line);
+  padding: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.status.error {
+  border-color: color-mix(in srgb, var(--danger), white 55%);
+  color: var(--danger);
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
