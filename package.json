@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:extension": "node scripts/write-extension-config.mjs",
     "start": "next start",
     "lint": "biome check",
     "test:extension-auth": "tsx --test src/lib/extension-token.test.ts",

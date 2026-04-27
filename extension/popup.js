@@ -1,10 +1,18 @@
-const DEFAULT_APP_URL = "http://localhost:3000";
+function configuredAppUrl() {
+  const appUrl =
+    typeof globalThis.NIE_APP_URL === "string"
+      ? globalThis.NIE_APP_URL
+      : "https://nie.uplyfted.io";
+
+  return appUrl.trim().replace(/\/+$/, "");
+}
+
+const APP_URL = configuredAppUrl();
 
 const elements = {
   settingsToggle: document.getElementById("settings-toggle"),
   settings: document.getElementById("settings"),
   status: document.getElementById("status"),
-  appUrl: document.getElementById("app-url"),
   pairingCode: document.getElementById("pairing-code"),
   openPairing: document.getElementById("open-pairing"),
   pair: document.getElementById("pair"),
@@ -17,7 +25,6 @@ const elements = {
 };
 
 let state = {
-  appUrl: DEFAULT_APP_URL,
   token: "",
   integrations: [],
 };
@@ -32,10 +39,6 @@ function storageSet(values) {
 
 function storageRemove(keys) {
   return chrome.storage.local.remove(keys);
-}
-
-function normalizeAppUrl(value) {
-  return (value || DEFAULT_APP_URL).trim().replace(/\/+$/, "");
 }
 
 function setStatus(message, type = "info") {
@@ -90,7 +93,6 @@ function renderIntegrations() {
 }
 
 function renderPairingState() {
-  elements.appUrl.value = state.appUrl;
   elements.exporter.hidden = !state.token;
   elements.settings.hidden = Boolean(state.token);
   elements.disconnect.hidden = !state.token;
@@ -98,7 +100,7 @@ function renderPairingState() {
 }
 
 async function apiFetch(path, options = {}) {
-  const response = await fetch(`${state.appUrl}${path}`, {
+  const response = await fetch(`${APP_URL}${path}`, {
     ...options,
     headers: {
       ...(options.headers || {}),
@@ -142,7 +144,6 @@ async function loadIntegrations() {
 }
 
 async function pairExtension() {
-  const appUrl = normalizeAppUrl(elements.appUrl.value);
   const code = elements.pairingCode.value.trim();
   if (!code) {
     setStatus("Paste a pairing code first.", "error");
@@ -152,7 +153,7 @@ async function pairExtension() {
   setBusy(true);
   setStatus("Pairing extension...");
   try {
-    const response = await fetch(`${appUrl}/api/extension/pair`, {
+    const response = await fetch(`${APP_URL}/api/extension/pair`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, label: "Chrome extension" }),
@@ -166,11 +167,10 @@ async function pairExtension() {
     const body = await response.json();
     state = {
       ...state,
-      appUrl,
       token: body.token,
       integrations: [],
     };
-    await storageSet({ appUrl: state.appUrl, token: state.token });
+    await storageSet({ token: state.token });
     elements.pairingCode.value = "";
     renderPairingState();
     await loadIntegrations();
@@ -182,10 +182,7 @@ async function pairExtension() {
 }
 
 async function openPairingPage() {
-  const appUrl = normalizeAppUrl(elements.appUrl.value);
-  await storageSet({ appUrl });
-  state.appUrl = appUrl;
-  await chrome.tabs.create({ url: `${appUrl}/extension/connect` });
+  await chrome.tabs.create({ url: `${APP_URL}/extension/connect` });
 }
 
 async function exportImages() {
@@ -207,7 +204,6 @@ async function exportImages() {
   try {
     const response = await chrome.runtime.sendMessage({
       type: "export-images",
-      appUrl: state.appUrl,
       token: state.token,
       pageIdOrUrl,
       integrationId,
@@ -229,12 +225,12 @@ async function disconnect() {
   setBusy(true);
   try {
     if (state.token) {
-      await fetch(`${state.appUrl}/api/extension/session`, {
+      await fetch(`${APP_URL}/api/extension/session`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${state.token}` },
       }).catch(() => null);
     }
-    await storageRemove(["token"]);
+    await storageRemove(["appUrl", "token"]);
     state.token = "";
     state.integrations = [];
     renderPairingState();
@@ -245,8 +241,8 @@ async function disconnect() {
 }
 
 async function init() {
-  const stored = await storageGet(["appUrl", "token"]);
-  state.appUrl = normalizeAppUrl(stored.appUrl);
+  const stored = await storageGet(["token"]);
+  await storageRemove(["appUrl"]);
   state.token = stored.token || "";
 
   const tabUrl = await activeTabUrl();

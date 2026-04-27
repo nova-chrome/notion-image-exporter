@@ -1,3 +1,16 @@
+import "./config.js";
+
+function configuredAppUrl() {
+  const appUrl =
+    typeof globalThis.NIE_APP_URL === "string"
+      ? globalThis.NIE_APP_URL
+      : "https://nie.uplyfted.io";
+
+  return appUrl.trim().replace(/\/+$/, "");
+}
+
+const APP_URL = configuredAppUrl();
+
 function filenameFromContentDisposition(header) {
   if (!header) return "notion-images.zip";
   const match = /filename\*?=(?:UTF-8''|")?([^";\n]+)"?/i.exec(header);
@@ -27,20 +40,17 @@ function arrayBufferToBase64(buffer) {
 }
 
 async function exportImages(message) {
-  const response = await fetch(
-    `${message.appUrl}/api/extension/notion-images`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${message.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        pageIdOrUrl: message.pageIdOrUrl,
-        integrationId: message.integrationId,
-      }),
+  const response = await fetch(`${APP_URL}/api/extension/notion-images`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${message.token}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      pageIdOrUrl: message.pageIdOrUrl,
+      integrationId: message.integrationId,
+    }),
+  });
 
   if (!response.ok) {
     throw new Error(await responseErrorMessage(response, "Export failed."));

@@ -8,7 +8,8 @@
     "default_title": "Export Notion images"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "permissions": ["activeTab", "downloads", "storage", "tabs"],
   "host_permissions": ["<all_urls>"]

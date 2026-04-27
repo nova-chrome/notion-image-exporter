@@ -71,15 +71,14 @@ token only to call the app API.
 
 2. Open Chrome → Extensions → Developer mode → Load unpacked → select the
    `extension` folder.
-3. In the extension popup, confirm the app URL (`http://localhost:3000` by
-   default), then choose **Open pairing page**.
+3. In the extension popup, choose **Open pairing page**.
 4. Create and copy a pairing code from the app, paste it into the extension,
    and pair.
 5. Open a Notion page and use the extension popup to download the ZIP.
 
-For production, set the extension popup’s app URL to your deployed app URL. The
-extension is intentionally broad on host permissions so local and deployed app
-URLs both work while this is still a private tool.
+The extension calls `https://nie.uplyfted.io` by default. To point a local
+extension build somewhere else, set `NIE_EXTENSION_APP_URL` and run
+`npm run build:extension` before loading the unpacked extension.
 
 ## ZIP contents
 
