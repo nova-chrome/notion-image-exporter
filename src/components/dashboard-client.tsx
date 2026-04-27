@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import { SignOutButton } from "~/components/auth-controls";
+import { BrandLogo } from "~/components/brand-logo";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -232,18 +233,23 @@ export function DashboardClient({ user }: DashboardClientProps) {
     <div className="flex min-h-full flex-1 flex-col bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10 md:px-6">
         <section className="grid gap-4 border border-border bg-card p-6 md:grid-cols-[1.4fr_0.6fr] md:items-end">
-          <div className="flex flex-col gap-3">
-            <Badge variant="secondary">Private Workspace</Badge>
-            <div className="flex flex-col gap-2">
-              <h1 className="font-heading text-3xl font-semibold tracking-tight">
-                Export with the right Notion account every time.
-              </h1>
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Signed in as{" "}
-                <span className="text-foreground">{user.email}</span>. Save
-                multiple Notion integrations, switch between them per export,
-                and keep the secrets server-side.
-              </p>
+          <div className="flex gap-4">
+            <BrandLogo className="mt-1" />
+            <div className="flex flex-col gap-3">
+              <Badge variant="secondary" className="w-fit">
+                Private Workspace
+              </Badge>
+              <div className="flex flex-col gap-2">
+                <h1 className="font-heading text-3xl font-semibold tracking-tight">
+                  Export with the right Notion account every time.
+                </h1>
+                <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                  Signed in as{" "}
+                  <span className="text-foreground">{user.email}</span>. Save
+                  multiple Notion integrations, switch between them per export,
+                  and keep the secrets server-side.
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex items-center justify-start gap-3 md:justify-end">

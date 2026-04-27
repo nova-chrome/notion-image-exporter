@@ -30,9 +30,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Notion image export",
+  title: "Notion Image Exporter",
   description:
     "Export images from a Notion page via the API as a ZIP—avoid WebP browser saves.",
+  icons: {
+    icon: [
+      {
+        url: "/assets/nie-logo-simple-transparent.png",
+        sizes: "1024x1024",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/assets/nie-logo-simple-transparent.png",
+        sizes: "1024x1024",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({

@@ -4,8 +4,20 @@
   "description": "Download images from the current Notion page through your Notion Image Exporter app.",
   "version": "0.1.0",
   "action": {
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png",
+      "48": "assets/icon-48.png",
+      "128": "assets/icon-128.png"
+    },
     "default_popup": "popup.html",
     "default_title": "Export Notion images"
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
   },
   "background": {
     "service_worker": "background.js",

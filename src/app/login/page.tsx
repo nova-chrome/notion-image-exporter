@@ -5,6 +5,7 @@ import {
 } from "@remixicon/react";
 import { redirect } from "next/navigation";
 import { SignInButton } from "~/components/auth-controls";
+import { BrandLogo } from "~/components/brand-logo";
 import { Badge } from "~/components/ui/badge";
 import {
   Card,
@@ -29,7 +30,12 @@ export default async function LoginPage() {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10 md:px-6 md:py-14">
         <section className="grid gap-8 border border-border bg-card p-8 md:grid-cols-[1.25fr_0.75fr] md:items-center">
           <div className="flex flex-col gap-5">
-            <Badge variant="secondary">Multi-User v1</Badge>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <BrandLogo variant="wordmark" size="lg" />
+              <Badge variant="secondary" className="w-fit">
+                Multi-User v1
+              </Badge>
+            </div>
             <div className="flex flex-col gap-3">
               <h1 className="font-heading text-4xl font-semibold tracking-tight md:text-5xl">
                 Keep every Notion integration in its own lane.
