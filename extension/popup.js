@@ -10,7 +10,6 @@ function configuredAppUrl() {
 const APP_URL = configuredAppUrl();
 
 const elements = {
-  settingsToggle: document.getElementById("settings-toggle"),
   settings: document.getElementById("settings"),
   status: document.getElementById("status"),
   pairingCode: document.getElementById("pairing-code"),
@@ -20,6 +19,7 @@ const elements = {
   integration: document.getElementById("integration"),
   pageUrl: document.getElementById("page-url"),
   export: document.getElementById("export"),
+  footer: document.getElementById("footer"),
   refresh: document.getElementById("refresh"),
   disconnect: document.getElementById("disconnect"),
 };
@@ -95,6 +95,7 @@ function renderIntegrations() {
 function renderPairingState() {
   elements.exporter.hidden = !state.token;
   elements.settings.hidden = Boolean(state.token);
+  elements.footer.hidden = !state.token;
   elements.disconnect.hidden = !state.token;
   renderIntegrations();
 }
@@ -259,9 +260,6 @@ async function init() {
   }
 }
 
-elements.settingsToggle.addEventListener("click", () => {
-  elements.settings.hidden = !elements.settings.hidden;
-});
 elements.openPairing.addEventListener("click", openPairingPage);
 elements.pair.addEventListener("click", pairExtension);
 elements.export.addEventListener("click", exportImages);

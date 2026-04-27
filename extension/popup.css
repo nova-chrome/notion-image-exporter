@@ -14,6 +14,11 @@
   box-sizing: border-box;
 }
 
+.panel[hidden],
+.footer[hidden] {
+  display: none;
+}
+
 body {
   width: 360px;
   margin: 0;
